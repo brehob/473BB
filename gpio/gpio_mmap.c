@@ -1,0 +1,93 @@
+
+// memmap stuff taken from https://github.com/furiousgreencloud/beagleboneIO/blob/master/src/beaglegpiomem.c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
+#include "gpio_mmap.h"
+
+
+volatile unsigned long* gpio;
+unsigned long bank_addr[] = {
+  GPIO0,
+  GPIO1,
+  GPIO2,
+  GPIO3
+};
+void get_address_and_mask(int pin, unsigned long offset, unsigned long * address, unsigned long * mask)
+{
+	int pin_num=pin%32;
+	int bank=pin/32;
+
+	*mask=1<<pin_num;
+	*address=bank_addr[bank]+offset;
+}
+
+void set_dir(int pin, int dir)
+{
+	unsigned long address,mask;
+	get_address_and_mask(pin,GPIO_OE,&address,&mask);
+	if(dir)
+		gpio[address/4]|=mask;
+	else
+		gpio[address/4]&=~mask;
+}
+
+void set_pin(int pin)
+{
+	unsigned long address,mask;
+	get_address_and_mask(pin,GPIO_SETDATAOUT,&address,&mask);
+	gpio[address/4]=mask;
+}
+
+void clear_pin(int pin)
+{
+	unsigned long address,mask;
+	get_address_and_mask(pin,GPIO_CLEARDATAOUT,&address,&mask);
+	gpio[address/4]=mask;
+}
+
+
+
+
+	
+
+volatile unsigned long* init_memmap()
+{
+
+	int gpio_fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (gpio_fd < 0) {
+      printf("Could not open GPIO memory fd\n");
+      exit(0);
+    }
+
+    gpio = (unsigned long*) mmap(NULL, MMAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, gpio_fd, MMAP_OFFSET);
+    if (gpio == MAP_FAILED) {
+      printf ("GPIO Mapping failed\n");
+      close(gpio_fd);
+      exit(0);
+    }
+    return gpio;
+}
+
+		
+
+void main(int argc, char * argv[]) 
+{
+	//Set up gpio to be pointer to chunk of memory that includes I/O.
+	//gets around virtual memory issues too.
+	gpio=init_memmap();
+	
+	set_dir(38,OUT);
+	while(1)
+	{
+		set_pin(38);
+		clear_pin(38);
+	}
+}

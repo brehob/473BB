@@ -1,0 +1,1 @@
+cmd_/home/eecs2334/hello/hello.ko := arm-linux-gnueabi-ld -EL -r  -T /home/eecs2334/kernel/kernel/scripts/module-common.lds --build-id  -o /home/eecs2334/hello/hello.ko /home/eecs2334/hello/hello.o /home/eecs2334/hello/hello.mod.o
